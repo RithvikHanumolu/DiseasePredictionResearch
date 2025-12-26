@@ -23,7 +23,11 @@ client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # Load service account credentials from Streamlit secrets
 credentials_dict = st.secrets["GOOGLE_SERVICE_ACCOUNT"]
-scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+scopes = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
+
 credentials = Credentials.from_service_account_info(credentials_dict, scopes=scopes)
 gc = gspread.authorize(credentials)
 sheet = gc.open(GOOGLE_SHEET_NAME).sheet1
