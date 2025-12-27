@@ -86,6 +86,8 @@ download_file(MODEL_URL, "diabetes_model.pkl")
 download_file(EXPLAINER_URL, "shap_explainer.pkl")
 download_file(FEATURES_URL, "feature_names.pkl")
 
+st.write("Model file size:", os.path.getsize("diabetes_model.pkl"))
+
 model = joblib.load("diabetes_model.pkl")
 explainer = joblib.load("shap_explainer.pkl")
 feature_names = joblib.load("feature_names.pkl")
