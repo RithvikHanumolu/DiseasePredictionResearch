@@ -14,6 +14,8 @@ import json
 import os
 import joblib
 import requests
+from huggingface_hub import hf_hub_download
+
 
 GOOGLE_SHEET_NAME = "Diabetes_Survey"  # your Google Sheet title
 
@@ -99,25 +101,28 @@ def download_file(url, dest):
             f.write(chunk)
 
 
-download_file(MODEL_URL, "diabetes_model.pkl")
-download_file(EXPLAINER_URL, "shap_explainer.pkl")
-download_file(FEATURES_URL, "feature_names.pkl")
+from huggingface_hub import hf_hub_download
 
-def assert_valid_file(path, min_bytes=1_000_000):
-    size = os.path.getsize(path)
-    st.write(f"{path} size:", size)
-    if size < min_bytes:
-        st.error(f"{path} is corrupted or incomplete.")
-        st.stop()
+# =========================
+# LOAD MODEL + SHAP from Hugging Face
+# =========================
+model_file = hf_hub_download(
+    repo_id="rmaster123/diabetes-model-assets",
+    filename="diabetes_model.pkl"
+)
+explainer_file = hf_hub_download(
+    repo_id="rmaster123/diabetes-model-assets",
+    filename="shap_explainer.pkl"
+)
+features_file = hf_hub_download(
+    repo_id="rmaster123/diabetes-model-assets",
+    filename="feature_names.pkl"
+)
 
-assert_valid_file("diabetes_model.pkl")
-assert_valid_file("shap_explainer.pkl")
-assert_valid_file("feature_names.pkl", min_bytes=1_000)
+model = joblib.load(model_file)
+explainer = joblib.load(explainer_file)
+feature_names = joblib.load(features_file)
 
-
-model = joblib.load("diabetes_model.pkl")
-explainer = joblib.load("shap_explainer.pkl")
-feature_names = joblib.load("feature_names.pkl")
 
 
 if "llm_calls" not in st.session_state:
