@@ -18,6 +18,11 @@ from huggingface_hub import hf_hub_download
 import gc
 
 
+
+print(st.__version__)
+
+
+
 @st.cache_resource
 def load_model():
     return joblib.load(model_path)
