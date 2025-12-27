@@ -72,19 +72,47 @@ OPENAI_MODEL = "gpt-4o-mini"
 # LOAD MODEL + SHAP
 # =========================
 
-MODEL_URL = "https://drive.google.com/file/d/17fPkCJ8YTysXAjIEXo8EqGoAzOJDzx1Q/view?usp=sharing"
-EXPLAINER_URL = "https://drive.google.com/file/d/1EGT2L2FToTnGX7k04tSG5NNf8JeoFFSn/view?usp=sharing"
-FEATURES_URL = "https://drive.google.com/file/d/1rHjMcx9HzGANQTf2jyXBjfO9Y46lCPqC/view?usp=sharing"
+MODEL_ID = "17fPkCJ8YTysXAjIEXo8EqGoAzOJDzx1Q"
+EXPLAINER_ID = "1EGT2L2FToTnGX7k04tSG5NNf8JeoFFSn"
+FEATURES_ID = "1rHjMcx9HzGANQTf2jyXBjfO9Y46lCPqC"
 
-def download_file(url, local_path):
-    if not os.path.exists(local_path):
-        r = requests.get(url)
-        with open(local_path, "wb") as f:
-            f.write(r.content)
+MODEL_URL = f"https://drive.google.com/uc?export=download&id={MODEL_ID}"
+EXPLAINER_URL = f"https://drive.google.com/uc?export=download&id={EXPLAINER_ID}"
+FEATURES_URL = f"https://drive.google.com/uc?export=download&id={FEATURES_ID}"
+
+
+def download_file(url, dest):
+    if os.path.exists(dest):
+        return
+
+    session = requests.Session()
+    response = session.get(url, stream=True)
+    response.raise_for_status()
+
+    for key, value in response.cookies.items():
+        if key.startswith("download_warning"):
+            response = session.get(url + "&confirm=" + value, stream=True)
+            break
+
+    with open(dest, "wb") as f:
+        for chunk in response.iter_content(32768):
+            f.write(chunk)
+
 
 download_file(MODEL_URL, "diabetes_model.pkl")
 download_file(EXPLAINER_URL, "shap_explainer.pkl")
 download_file(FEATURES_URL, "feature_names.pkl")
+
+def assert_valid_file(path, min_bytes=1_000_000):
+    size = os.path.getsize(path)
+    st.write(f"{path} size:", size)
+    if size < min_bytes:
+        st.error(f"{path} is corrupted or incomplete.")
+        st.stop()
+
+assert_valid_file("diabetes_model.pkl")
+assert_valid_file("shap_explainer.pkl")
+assert_valid_file("feature_names.pkl", min_bytes=1_000)
 
 
 model = joblib.load("diabetes_model.pkl")
