@@ -139,8 +139,8 @@ model = joblib.load(model_file)
 explainer = joblib.load(explainer_file)
 feature_names = joblib.load(features_file)
 
+import gc
 gc.collect()
-
 
 
 if "llm_calls" not in st.session_state:
