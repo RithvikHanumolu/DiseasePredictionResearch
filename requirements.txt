@@ -8,3 +8,4 @@ openai
 gspread
 google-auth
 requests
+streamlit
