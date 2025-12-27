@@ -8,4 +8,4 @@ openai
 gspread
 google-auth
 requests
-streamlit
+huggingface_hub
