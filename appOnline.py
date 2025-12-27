@@ -15,6 +15,16 @@ import os
 import joblib
 import requests
 from huggingface_hub import hf_hub_download
+import gc
+
+
+@st.cache_resource
+def load_model():
+    return joblib.load(model_path)
+
+@st.cache_resource
+def load_explainer():
+    return joblib.load(explainer_path)
 
 
 GOOGLE_SHEET_NAME = "Diabetes_Survey"  # your Google Sheet title
@@ -128,6 +138,8 @@ features_file = hf_hub_download(
 model = joblib.load(model_file)
 explainer = joblib.load(explainer_file)
 feature_names = joblib.load(features_file)
+
+gc.collect()
 
 
 
