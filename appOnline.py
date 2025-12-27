@@ -108,16 +108,19 @@ from huggingface_hub import hf_hub_download
 # =========================
 model_file = hf_hub_download(
     repo_id="rmaster123/diabetes-model-assets",
+    repo_type="dataset",
     filename="diabetes_model.pkl",
     token=st.secrets["HUGGINGFACE_TOKEN"]
 )
 explainer_file = hf_hub_download(
     repo_id="rmaster123/diabetes-model-assets",
+    repo_type="dataset",
     filename="shap_explainer.pkl",
     token=st.secrets["HUGGINGFACE_TOKEN"]
 )
 features_file = hf_hub_download(
     repo_id="rmaster123/diabetes-model-assets",
+    repo_type="dataset",
     filename="feature_names.pkl",
     token=st.secrets["HUGGINGFACE_TOKEN"]
 )
