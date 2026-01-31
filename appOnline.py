@@ -19,8 +19,6 @@ import gc
 
 
 
-print(st.__version__)
-
 
 
 @st.cache_resource
@@ -151,9 +149,9 @@ gc.collect()
 if "llm_calls" not in st.session_state:
     st.session_state.llm_calls = 0
 
-if st.session_state.llm_calls >= MAX_FOLLOWUPS:
-    st.warning("LLM question limit reached.")
-    st.stop()
+# if st.session_state.llm_calls >= MAX_FOLLOWUPS:
+#     st.warning("LLM question limit reached.")
+#     st.stop()
 
 
 # =========================
@@ -177,209 +175,173 @@ if st.session_state.llm_calls >= MAX_FOLLOWUPS:
 #         writer.writerow(row)
 
 def generate_llm_question(user_features, shap_dict, pred_prob=None):
-    # Prepare context
-    risk_val = f"{pred_prob:.1%}" if pred_prob else "N/A"
-    
-    # This is your original list of medical questions shortened for the prompt
-    medical_context = """
-    Do you test your blood sugar levels? If no, why?
-
+    question_bank = """
+Do you test your blood sugar levels? If no, why?
 
 How many times per day do you test? One, Two, Three, Four, Five or more
 
-
 When do you test? (Before breakfast, before lunch/dinner, after meals, at bedtime, other)
-
 
 Have you had LOW blood sugars? If yes, how often? (Daily, Weekly, Monthly, Other)
 
-
 What time(s) of day do most of your low blood sugars occur? (Morning, Mid Day, Afternoon, Evening, Night)
-
 
 How do you treat low blood sugars?
 
-
 Have you ever lost consciousness or required assistance to reverse low blood sugar?
-
 
 When did it last occur? How often?
 
-
 Do you ever have HIGH blood sugar levels? If yes, how often? (Daily, Weekly, Monthly, Other)
-
 
 What time(s) of day do most of your high blood sugars occur? (Morning, Mid Day, Afternoon, Evening, Night)
 
-
 How do you treat high blood sugars?
-
 
 What is your sex?
 
-
 Is there a family history of diabetes?
-
 
 What is your Race / Ethnicity?
 
-
 Do you have any other health problems? (High BP, Heart disease, Cholesterol, etc.)
-
 
 Do you have any of the following problems? (Vision / Hearing issues – use glasses? use hearing aids?)
 
-   
 List any medications and when you take them
-
 
 How often do you see your doctor?
 
-
 When did you last see your eye doctor?
-
 
 Do you live alone? If not, who do you live with?
 
-
 Do you smoke? If quit, when? If yes, how much?
-
 
 Do you drink alcohol? (Type, how much, how often)
 
-
 Do you work? If yes: What shift? What hours?
-
 
 Is there much stress in your life? How do you handle it?
 
-
 Do you ever get depressed? (A lot / Some / A little)
-
 
 Do you exercise? If yes: Type of exercise; Frequency; Length
 
-
 Do you have limitations on exercise?
-
 
 Have you had previous instruction on diet? If yes: Where? When?
 
-
 Do you have a meal plan? Calories? How much do you follow it? (0–100%)
-
 
 Do you follow dietary restrictions or special meals? (Vegetarian, Low-carb, etc.)
 
-
 Has your weight changed in the last 6 months? (Pounds gained/lost)
-
 
 What is your Height, Age, Current weight?
 
-
 Are you happy with your weight? What would you like to weigh?
-
 
 What was your highest weight? If current is less, how did you lose weight?
 
-
 Do you have any food allergies?
-
 
 Do you have any food/beverage intolerances?
 
-
 How is your appetite? (Good / Fair / Poor)
-
 
 Any eating/digestion problems? (Chewing, Swallowing, Stomachache, etc.)
 
-
 Who prepares meals at home?
-
 
 Who does the grocery shopping?
 
-
 Do you follow any cultural/religious dietary restrictions?
-
 
 Do you take vitamins or nutrition supplements? (Multivitamins, Iron, etc.)
 
-
 Has there been any recent change in your appetite?
-
 
 Do you take herbal supplements? (Garlic, Ginseng, etc.)
 
-
 Check favorite beverages and amount: Coffee / Tea (cups/day); What do you add? (Milk, Sugar, etc.); Juice, Soda, Water (amount)
-
 
 What do you eat in a typical day? (Time + meals/snacks, content, quantity)
 
-
 How often do you eat listed foods? (Bread, Sausage, Pasta, Candy, etc.) Frequency: Daily, 1–3x/week, 4+ x/week, Monthly, Rarely; Quantity
-
 
 How many times/week do you eat: Breakfast, Lunch, Dinner
 
-
 What dairy products do you eat/drink? (Milk, Yogurt, Cheese – fat content)
-
 
 Milk intake: How many cups per day?
 
-
 If using: Lactaid / Soy milk / Rice milk — how much?
-
 
 What fruits do you like? How often? (Canned in syrup/juice, Fresh, Frozen, etc.)
 
-
 What vegetables do you like? How often? (Fresh, Canned, Frozen)
-
 
 Foods you dislike and will not eat
 
-
 How often do you eat out (restaurants, cafeterias, etc.)?
 
-
 What eating concerns do you have?
-    """
+"""
+
+    shap_summary = [
+        {
+            "feature": k,
+            "value": user_features.get(k, None),
+            "direction": "increase" if v > 0 else "decrease",
+            "magnitude": round(abs(v), 3),
+        }
+        for k, v in shap_dict.items()
+    ]
+    previous_questions = st.session_state.questions if "questions" in st.session_state else []
+
+    system_msg = (
+        "You are a research survey assistant. "
+        "Output ONLY the follow-up question text. "
+        "Ask exactly ONE question (1-2 sentences max). "
+        "No labels, no bullets, no explanations."
+    )
 
     prompt = f"""
-    You are a health assistant helping users understand their diabetes risk.
-    Current Model Risk Probability: {risk_val}
+Use ONLY the SHAP summary and the user's feature values to choose the most relevant follow-up topic.
+Encourage more detail only when it directly relates to the top SHAP drivers.
+Do not mention SHAP, model, or probabilities.
+Avoid repeating any previous questions verbatim.
 
-    User Data:
-    {chr(10).join(f"- {k}: {v}" for k, v in user_features.items() if k in feature_names)}
+Top SHAP features (name, value, direction, magnitude): {shap_summary}
+User feature values (subset): {user_features}
+Previous questions: {previous_questions}
 
-    SHAP Feature Impact:
-    {chr(10).join(f"- {k}: {'↑' if v > 0 else '↓'} {abs(v):.3f}" for k, v in shap_dict.items())}
+Reference question bank for style and scope (do not copy verbatim unless it is the best personalized fit):
+{question_bank}
+"""
 
-    INSTRUCTION:
-    Ask ONE (1) clear, natural follow-up question. 
-    Focus on the features with the biggest SHAP impact. 
-    Use the following medical questions as a guide for style and topic:
-    {medical_context}
-    
-    DO NOT provide a list. Ask only ONE question.
-    """
-    
     response = client.chat.completions.create(
-    model=OPENAI_MODEL,
-    messages=[{"role": "user", "content": prompt}],
-    temperature=0.7
-)
-    return response.choices[0].message.content.strip()
+        model=OPENAI_MODEL,
+        messages=[
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.4,
+        max_tokens=80,
+    )
+    text = response.choices[0].message.content.strip()
+    question = text.splitlines()[0].strip()
+    if question.lower().startswith("question:"):
+        question = question.split("question:", 1)[1].strip()
+    if question.startswith("\"") and question.endswith("\""):
+        question = question[1:-1].strip()
+    return question
 
 # =========================
 # STREAMLIT STATE
 # =========================
-st.set_page_config(page_title="Health Research Survey")
+st.set_page_config(page_title="Student Health Research Survey")
 
 if "pid" not in st.session_state:
     st.session_state.pid = None
@@ -392,7 +354,7 @@ if "pid" not in st.session_state:
 # CONSENT
 # =========================
 if st.session_state.pid is None:
-    st.title("Research Study Consent")
+    st.title("Student Research Study Consent")
 
     st.markdown("""
 This research study evaluates how AI systems ask follow-up health questions.
@@ -403,11 +365,14 @@ This research study evaluates how AI systems ask follow-up health questions.
 • 18+ only
 """)
 
-    if st.checkbox("I confirm I am 18 or older") and st.checkbox("I agree to participate"):
-        if st.button("Start"):
-            st.session_state.pid = str(uuid.uuid4())
-            st.session_state.group = random.choice(["LLM", "RANDOM"])
-            st.rerun()
+    is_adult = st.checkbox("I confirm I am 18 or older")
+    agrees = st.checkbox("I agree to participate")
+    consent_ready = is_adult and agrees
+
+    if st.button("Start", disabled=not consent_ready):
+        st.session_state.pid = str(uuid.uuid4())
+        st.session_state.group = random.choice(["LLM", "RANDOM"])
+        st.rerun()
 
     st.stop()
 
@@ -627,4 +592,3 @@ else:
         save_row_to_gs(row)
 
         st.success("Thank you for participating.")
-
