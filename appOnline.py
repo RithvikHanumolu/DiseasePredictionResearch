@@ -371,7 +371,7 @@ This research study evaluates how AI systems ask follow-up health questions.
 
     if st.button("Start", disabled=not consent_ready):
         st.session_state.pid = str(uuid.uuid4())
-        st.session_state.group = random.choice(["LLM", "RANDOM"])
+        st.session_state.group = "LLM"
         st.rerun()
 
     st.stop()
@@ -520,14 +520,6 @@ elif 1 <= st.session_state.step <= MAX_FOLLOWUPS:
                     shap_sorted,
                     pred_prob=pred_proba
                 )
-            else:
-                # Random question for control group
-                st.session_state[question_key] = random.choice([
-                    "How often do you exercise?",
-                    "How would you describe your diet?",
-                    "How many hours do you sleep?",
-                    "Do you experience stress regularly?"
-                ])
 
     question = st.session_state[question_key]
 
